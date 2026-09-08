@@ -6,41 +6,16 @@ PDF RAG system.
 
 The pipeline has two main operations:
 
-1. index_document()
-   PDF -> ingestion -> chunking -> embeddings -> FAISS
+    1. index_document()
+       PDF -> ingestion -> chunking -> embeddings -> FAISS
 
-2. ask()
-   question -> retrieval -> reranking -> Gemini -> answer
+    2. ask()
+       question -> retrieval -> reranking -> Gemini -> answer
 
 The lower-level implementation remains separated into
 specialized modules.
 
 This module only orchestrates those components.
-
-Architecture:
-
-    PDF
-     |
-     v
-    Indexing Pipeline
-     |
-     v
-    Persistent FAISS Index
-     |
-     v
-    User Question
-     |
-     v
-    RAG Answer Pipeline
-     |
-     +--> Retrieval
-     |
-     +--> Reranking
-     |
-     +--> Gemini
-     |
-     v
-    Grounded Answer + Citations
 """
 
 import logging
@@ -58,7 +33,9 @@ class RAGPipeline:
     """
     High-level interface for the PDF RAG system.
 
-    The class manages the currently loaded vector index.
+    The class manages the currently loaded vector index
+    and exposes useful document statistics to the application
+    layer.
 
     Example
     -------
@@ -96,12 +73,15 @@ class RAGPipeline:
 
                 pipeline.load_existing_index()
 
-            This design keeps pipeline initialization lightweight
-            and allows a new pipeline to be created before a
-            document has been indexed.
+        This design keeps pipeline initialization lightweight
+        and allows a new pipeline to be created before a
+        document has been indexed.
         """
 
+        # The currently loaded FAISS vector store.
         self.vector_store: VectorStore | None = None
+
+        # Directory containing the persistent index.
         self.index_directory: Path | None = None
 
         # ---------------------------------------------------------
@@ -112,10 +92,7 @@ class RAGPipeline:
 
         if index_directory is not None:
 
-            if not isinstance(
-                index_directory,
-                Path,
-            ):
+            if not isinstance(index_directory, Path):
                 raise TypeError(
                     "index_directory must be a pathlib.Path."
                 )
@@ -126,6 +103,7 @@ class RAGPipeline:
                 "Configured RAG index directory: %s",
                 index_directory,
             )
+
     # =========================================================
     # INDEXING
     # =========================================================
@@ -174,10 +152,7 @@ class RAGPipeline:
         # Validate PDF path.
         # -----------------------------------------------------
 
-        if not isinstance(
-            pdf_path,
-            Path,
-        ):
+        if not isinstance(pdf_path, Path):
             raise TypeError(
                 "pdf_path must be a pathlib.Path."
             )
@@ -188,10 +163,7 @@ class RAGPipeline:
 
         if index_directory is not None:
 
-            if not isinstance(
-                index_directory,
-                Path,
-            ):
+            if not isinstance(index_directory, Path):
                 raise TypeError(
                     "index_directory must be a pathlib.Path."
                 )
@@ -203,7 +175,6 @@ class RAGPipeline:
         # -----------------------------------------------------
 
         if self.index_directory is None:
-
             raise ValueError(
                 "index_directory must be provided when "
                 "no index directory was configured."
@@ -277,10 +248,7 @@ class RAGPipeline:
 
         if index_directory is not None:
 
-            if not isinstance(
-                index_directory,
-                Path,
-            ):
+            if not isinstance(index_directory, Path):
                 raise TypeError(
                     "index_directory must be a pathlib.Path."
                 )
@@ -292,7 +260,6 @@ class RAGPipeline:
         # -----------------------------------------------------
 
         if self.index_directory is None:
-
             raise ValueError(
                 "index_directory must be provided."
             )
@@ -377,10 +344,8 @@ class RAGPipeline:
         # RAG implementation.
         # -----------------------------------------------------
 
-        if not isinstance(
-            question,
-            str,
-        ):
+        if not isinstance(question, str):
+
             raise TypeError(
                 "question must be a string."
             )
@@ -422,11 +387,11 @@ class RAGPipeline:
         #
         # rag.py handles:
         #
-        # FAISS retrieval
-        # Cross-Encoder reranking
-        # context construction
-        # Gemini generation
-        # citation mapping
+        # - FAISS retrieval
+        # - Cross-Encoder reranking
+        # - context construction
+        # - Gemini generation
+        # - citation mapping
         # -----------------------------------------------------
 
         response = answer_question(
@@ -467,3 +432,67 @@ class RAGPipeline:
             return 0
 
         return len(self.vector_store)
+
+    # =========================================================
+    # DOCUMENT STATISTICS
+    # =========================================================
+
+    @property
+    def document_name(self) -> str | None:
+        """
+        Return the name of the currently indexed document.
+
+        The filename is stored inside each DocumentChunk
+        during the chunking stage.
+
+        Returns None when no document is loaded.
+        """
+
+        if self.vector_store is None:
+            return None
+
+        if not self.vector_store.chunks:
+            return None
+
+        return self.vector_store.chunks[0].source_filename
+
+    @property
+    def page_count(self) -> int:
+        """
+        Return the number of unique pages represented
+        in the current vector index.
+
+        Because our chunking process is page-aware,
+        every chunk stores the page number from which
+        its text originated.
+        """
+
+        if self.vector_store is None:
+            return 0
+
+        pages: set[int] = set()
+
+        for chunk in self.vector_store.chunks:
+            pages.update(chunk.page_numbers)
+
+        return len(pages)
+
+    @property
+    def character_count(self) -> int:
+        """
+        Return the total number of characters represented
+        by the indexed chunks.
+
+        Note:
+            Because chunks overlap, this value represents
+            indexed chunk characters rather than the exact
+            raw PDF character count.
+        """
+
+        if self.vector_store is None:
+            return 0
+
+        return sum(
+            chunk.character_count
+            for chunk in self.vector_store.chunks
+        )
