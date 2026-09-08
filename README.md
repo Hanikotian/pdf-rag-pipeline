@@ -41,30 +41,33 @@ Grounded Answer
      |
      v
 Source / Page Citations
+```
 
-Features:
-Generic PDF ingestion
-Page-level text extraction using PyMuPDF
-Page-aware document chunking
-Local semantic embeddings using Sentence Transformers
-FAISS vector similarity search
-Cross-Encoder reranking
-Gemini-powered grounded answer generation
-Structured LLM responses
-Source and page citation mapping
-Persistent FAISS indexes
-Pydantic data models
-Automated unit tests
-Integration tests for LLM functionality
-Streamlit application layer
+## Features
 
-Tech Stack:
-Python
-PyMuPDF
-Sentence Transformers
-FAISS
-Cross-Encoder
-Google Gemini
-Pydantic
-Streamlit
-Pytest
+- Generic PDF ingestion
+- Page-level text extraction using PyMuPDF
+- Page-aware document chunking
+- Local semantic embeddings using Sentence Transformers
+- FAISS vector similarity search
+- Cross-Encoder reranking
+- Gemini-powered grounded answer generation
+- Structured LLM responses
+- Source and page citation mapping
+- Persistent FAISS indexes
+- Pydantic data models
+- Automated unit tests
+- Integration tests for LLM functionality
+- Streamlit application layer
+
+## Tech Stack
+
+- Python
+- PyMuPDF
+- Sentence Transformers
+- FAISS
+- Cross-Encoder
+- Google Gemini
+- Pydantic
+- Streamlit
+- Pytest
